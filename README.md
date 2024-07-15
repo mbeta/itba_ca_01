@@ -1,9 +1,11 @@
 # itba_ca_01
 Trabajo Práctico Intermedio Foundations - Betania Martinez
 
-# Descripción del Dataset: Mejores Películas de Fútbol en Rotten Tomatoes
+# Mejores Películas de Fútbol en Rotten Tomatoes
 
 El dataset elegido proviene de Kaggle y se titula "Rotten Tomatoes Best Soccer Movies". Este conjunto de datos contiene información sobre las mejores películas de fútbol según Rotten Tomatoes. Los datos incluyen atributos como el título de la película, la calificación de Rotten Tomatoes, el año de lanzamiento, el país de producción, la duración y otros detalles relevantes.
+
+**Enlace al dataset:** [Rotten Tomatoes Best Soccer Movies](https://www.kaggle.com/datasets/bwandowando/rotten-tomatoes-best-soccer-movies)
 
 ## Preguntas de Negocio
 
@@ -25,4 +27,4 @@ El dataset de las mejores películas de fútbol ofrece una rica fuente de datos 
 
 ---
 
-**Enlace al dataset:** [Rotten Tomatoes Best Soccer Movies](https://www.kaggle.com/datasets/bwandowando/rotten-tomatoes-best-soccer-movies)
+
