@@ -1,3 +1,5 @@
+version: '3.9'
+
 services:
   db:
     image: postgres:12.7
@@ -11,6 +13,23 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
       - ./initdb:/docker-entrypoint-initdb.d
+
+  data_loader:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: data_loader
+    depends_on:
+      - db
+    volumes:
+      - ./files:/files
+    environment:
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: soccer-movies
+      POSTGRES_HOST: db  # Nombre del servicio en docker-compose
+    command: ["python", "populate_db.py"]
+    restart: on-failure
 
 volumes:
   postgres_data:
