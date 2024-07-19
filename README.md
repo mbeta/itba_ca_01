@@ -7,6 +7,12 @@ El dataset elegido proviene de Kaggle y se titula "Rotten Tomatoes Best Soccer M
 
 **Enlace al dataset:** [Rotten Tomatoes Best Soccer Movies](https://www.kaggle.com/datasets/bwandowando/rotten-tomatoes-best-soccer-movies)
 
+El dataset contiene 3 tablas:
+   - movies: Listado de películas
+   - user_reviews: Valoraciones realizadas por usuarios (problemas para especificar primaty key por calidad de datos)
+   - critic_reviews: Valoraciones realizadas por críticos
+
+
 ## Preguntas de Negocio
 
 1. **¿Cuál es la calificación promedio de las películas de fútbol?**
