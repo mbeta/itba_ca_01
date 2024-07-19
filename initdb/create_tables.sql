@@ -22,6 +22,8 @@ CREATE TABLE critic_reviews (
 -- Tabla movies
 CREATE TABLE movies (
     movieId UUID PRIMARY KEY,
+    movieTitle TEXT,
+    movieYear INTEGER, 
     movieURL TEXT,
     movieRank INTEGER,
     critic_score VARCHAR(10),
@@ -30,10 +32,10 @@ CREATE TABLE movies (
 
 -- Tabla user_reviews
 CREATE TABLE user_reviews (
-    reviewId VARCHAR(50),
     movieId UUID,
     rating DECIMAL(2,1),
     quote TEXT,
+    reviewId VARCHAR(50),
     isVerified BOOLEAN,
     isSuperReviewer BOOLEAN,
     hasSpoilers BOOLEAN,
