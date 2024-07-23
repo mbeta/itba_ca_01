@@ -1,102 +1,187 @@
 import os
-import time
+import time  
 import pandas as pd
 import psycopg2
 from psycopg2.extras import execute_values
-from uuid import UUID
+import csv
+# from psycopg2 import sql
 
-# Esperar hasta que la base de datos esté lista
-time.sleep(10)
+# Conectar a la base de datos
+def connect_db():
+    while True:
+        try:
+            user = os.getenv('POSTGRES_USER')
+            password = os.getenv('POSTGRES_PASSWORD')
+            db = os.getenv('POSTGRES_DB')
+            host = os.getenv('POSTGRES_HOST')
+
+            conn = psycopg2.connect(
+                dbname=db,
+                user=user,
+                password=password,
+                host=host
+            )
+            print("Conectado a Base de Datos")
+            return conn
+        except psycopg2.OperationalError:
+            print("Esperando que la base de datos este lista...")
+            time.sleep(5)
+
+def set_constraints(conn, enable=True):
+    cur = conn.cursor()
+    action = 'ENABLE' if enable else 'DISABLE'
+    queries = [
+        f"ALTER TABLE title_basics {action} TRIGGER ALL;",
+        f"ALTER TABLE name_basics {action} TRIGGER ALL;",
+        f"ALTER TABLE title_akas {action} TRIGGER ALL;",
+        f"ALTER TABLE title_principals {action} TRIGGER ALL;",
+        f"ALTER TABLE title_ratings {action} TRIGGER ALL;"
+    ]
+    
+    for query in queries:
+        cur.execute(query)
+    
+    conn.commit()
+    cur.close()
 
 
-# Conexión a la base de datos PostgreSQL
-conn = psycopg2.connect(
-    dbname='soccer-movies',
-    user='user',
-    password='password',
-    host='db',
-    port='5432'
-)
-cursor = conn.cursor()
-csv_path = '/files'
+def transform_array_column(df, column_name):
+    df[column_name] = df[column_name].apply(
+        lambda x: "{" + ",".join(x.split(',')) + "}" if pd.notna(x) else None
+    )
 
-# Función para reemplazar NaN en columnas booleanas
-def replace_nan_with_boolean(df, boolean_columns):
-    for col in boolean_columns:
-        if col in df.columns:
-            df[col] = df[col].fillna(False).astype(bool)
 
-# Función para convertir columnas a string (para UUIDs)
-def convert_to_string(df, uuid_columns):
-    for col in uuid_columns:
-        if col in df.columns:
-            df[col] = df[col].apply(lambda x: str(x) if pd.notna(x) else None)
-            
-# Función para limpiar y preparar los datos antes de la inserción
-def clean_data(df, boolean_columns, uuid_columns):
-    replace_nan_with_boolean(df, boolean_columns)
-    convert_to_string(df, uuid_columns)
-    df = df.where(pd.notnull(df), None)  # Reemplaza NaN por None para que psycopg2 los maneje como NULL en PostgreSQL
-    return df
+# Leer y cargar datos desde TSV a PostgreSQL
+def load_tsv_to_db(file_path, table_name, columns, conn, array_columns=None):
+    print(f"Inicia carga de datos del archivo: {file_path}, tabla: {table_name}")
+    cur = conn.cursor()
 
-# Función para escapar caracteres especiales en texto
-def escape_string_values(df):
-    for col in df.select_dtypes(include=['object']).columns:
-        df[col] = df[col].apply(lambda x: x.replace("'", "''") if isinstance(x, str) else x)
-    return df
+    df = pd.read_csv(file_path, sep='\t', quotechar='"', quoting=3, dtype=str)
+    df = df.replace({'\\N': None})  # Reemplazar '\N' con None
+    df.columns = [col.lower() for col in df.columns]  # Convertir a minúsculas para que coincidan con los nombres en PostgreSQL
 
-# Cargar CSVs en DataFrames
-movies = pd.read_csv(os.path.join(csv_path, 'movies.csv'))
-critic_reviews = pd.read_csv(os.path.join(csv_path, 'critic_reviews.csv'))
-user_reviews = pd.read_csv(os.path.join(csv_path, 'user_reviews.csv'))
+    if array_columns:
+        for col in array_columns:
+            transform_array_column(df, col)
+   
+    # Formatear los valores para la inserción masiva
+    values = [tuple(x) for x in df.to_numpy()]
 
-# Limpiar datos
-movies = clean_data(movies, [], ['movieId'])
-critic_reviews = clean_data(critic_reviews, ['isFresh', 'isRotten', 'isRtUrl', 'isTopCritic'],['movieId'] )
-user_reviews = clean_data(user_reviews, ['isVerified', 'isSuperReviewer', 'hasSpoilers', 'hasProfanity'], ['movieId'])
+    # Generar la consulta de inserción masiva
+    insert_query = f"INSERT INTO {table_name} ({', '.join(columns)}) VALUES %s ON CONFLICT DO NOTHING"
 
-# Escapar caracteres especiales en texto
-movies = escape_string_values(movies)
-critic_reviews = escape_string_values(critic_reviews)
-user_reviews = escape_string_values(user_reviews)
+    # Ejecutar la inserción masiva
+    execute_values(cur, insert_query, values)
 
-# Reemplazar NaN con booleanos en columnas booleanas
-# replace_nan_with_boolean(critic_reviews, [
-#     'isFresh', 'isRotten', 'isRtUrl', 'isTopCritic'
-# ])
-# replace_nan_with_boolean(user_reviews, [
-#     'isVerified', 'isSuperReviewer', 'hasSpoilers', 'hasProfanity'
-# ])
+    # Confirmar la transacción
+    conn.commit()
 
-# Convertir columnas UUID a string
-# convert_to_string(critic_reviews, ['movieId'])
-# convert_to_string(movies, ['movieId'])
-# convert_to_string(user_reviews, ['movieId'])
+# Leer y cargar datos desde TSV a PostgreSQL
+def load_tsv_to_db_in_chunks(file_path, table_name, columns, conn, array_columns=None, chunksize=10000):
+    print(f"Inicia carga de datos del archivo: {file_path}, tabla: {table_name}")
+    cur = conn.cursor()
 
-# Reemplazar NaN con booleanos
-# replace_nan_with_boolean(critic_reviews, ['boolean_col1', 'boolean_col2'])  # Reemplaza con nombres de columnas booleanas reales
-# replace_nan_with_boolean(movies, ['boolean_col1', 'boolean_col2'])
-# replace_nan_with_boolean(user_reviews, ['boolean_col1', 'boolean_col2'])
+    for chunk in pd.read_csv(file_path, sep='\t', quotechar='"', quoting=3, dtype=str, chunksize=chunksize):
+        chunk = chunk.replace({'\\N': None})  # Reemplazar '\N' con None
+        chunk.columns = [col.lower() for col in chunk.columns]  # Convertir a minúsculas para que coincidan con los nombres en PostgreSQL
 
-# Insertar datos en la tabla movies
-movies_tuples = [tuple(x) for x in movies.to_numpy()]
-movies_cols = ','.join(list(movies.columns))
-insert_query = f"INSERT INTO movies ({movies_cols}) VALUES %s"
-execute_values(cursor, insert_query, movies_tuples)
+        if array_columns:
+            for col in array_columns:
+                transform_array_column(chunk, col)
 
-# Insertar datos en la tabla critic_reviews
-critic_reviews_tuples = [tuple(x) for x in critic_reviews.to_numpy()]
-critic_reviews_cols = ','.join(list(critic_reviews.columns))
-insert_query = f"INSERT INTO critic_reviews ({critic_reviews_cols}) VALUES %s"
-execute_values(cursor, insert_query, critic_reviews_tuples)
+        # Formatear los valores para la inserción masiva
+        values = [tuple(x) for x in chunk.to_numpy()]
 
-# Insertar datos en la tabla user_reviews
-user_reviews_tuples = [tuple(x) for x in user_reviews.to_numpy()]
-user_reviews_cols = ','.join(list(user_reviews.columns))
-insert_query = f"INSERT INTO user_reviews ({user_reviews_cols}) VALUES %s"
-execute_values(cursor, insert_query, user_reviews_tuples)
+        # Generar la consulta de inserción masiva
+        insert_query = f"INSERT INTO {table_name} ({', '.join(columns)}) VALUES %s ON CONFLICT DO NOTHING"
 
-# Confirmar cambios y cerrar conexión
-conn.commit()
-cursor.close()
-conn.close()
+        # Ejecutar la inserción masiva
+        execute_values(cur, insert_query, values)
+        
+        # Confirmar la transacción
+        conn.commit()
+
+    cur.close()
+
+
+
+def wait_for_files(file_paths, timeout=60):
+    print("Esperar hasta que los archivos estén disponibles.")
+    start_time = time.time()
+    while time.time() - start_time < timeout:
+        all_files_exist = all(os.path.exists(file_path) for file_path in file_paths)
+        if all_files_exist:
+            return True
+        time.sleep(5)  # Espera 5 segundos antes de volver a comprobar
+    raise FileNotFoundError("No se encontraron todos los archivos dentro del tiempo de espera.")
+
+def main():
+    print("Se inicia carga de información.")
+    
+    # Rutas de archivos TSV
+    file_paths = [
+        '/files/title.basics.tsv',
+        '/files/name.basics.tsv',
+        '/files/title.akas.tsv',
+        '/files/title.principals.tsv',
+        '/files/title.ratings.tsv'
+    ]
+
+    # Esperar a que los archivos estén disponibles
+    wait_for_files(file_paths)
+    print("Todos los archivos disponibles.")
+   
+    # Conectar a la base de datos
+    conn = connect_db()
+    
+    print("Desactivar restricciones de claves.")
+    set_constraints(conn, enable=False)
+
+    # Cargar datos en cada tabla
+    # load_data_to_db('title_basics', '/files/title.basics.tsv', conn)
+    # load_data_to_db('name_basics', '/files/name.basics.tsv', conn)
+    # load_data_to_db('title_akas', '/files/title.akas.tsv', conn)
+    # load_data_to_db('title_principals', '/files/title.principals.tsv', conn)
+    # load_data_to_db('title_ratings', '/files/title.ratings.tsv', conn)
+    
+    
+    try:
+        # Cargar datos en cada tabla
+        #load_tsv_to_db('/files/title.basics.tsv', 'title_basics', [
+        load_tsv_to_db_in_chunks('/files/title.basics.tsv', 'title_basics', [
+            'tconst', 'titletype', 'primarytitle', 'originaltitle', 'isadult',
+            'startyear', 'endyear', 'runtimeminutes', 'genres'], conn, array_columns=['genres'])
+
+        #load_tsv_to_db('/files/name.basics.tsv', 'name_basics', [
+        load_tsv_to_db_in_chunks('/files/name.basics.tsv', 'name_basics', [
+            'nconst', 'primaryname', 'birthyear', 'deathyear', 'primaryprofession',
+            'knownfortitles'], conn, array_columns=['primaryprofession', 'knownfortitles'])
+
+        #load_tsv_to_db('/files/title.akas.tsv', 'title_akas', [
+        load_tsv_to_db_in_chunks('/files/title.akas.tsv', 'title_akas', [
+            'titleid', 'ordering', 'title', 'region', 'language', 'types', 'attributes',
+            'isoriginaltitle'], conn, array_columns=['types', 'attributes'])
+
+        #load_tsv_to_db('/files/title.principals.tsv', 'title_principals', [
+        load_tsv_to_db_in_chunks('/files/title.principals.tsv', 'title_principals', [
+            'tconst', 'ordering', 'nconst', 'category', 'job', 'characters'], conn)
+
+        #load_tsv_to_db('/files/title.ratings.tsv', 'title_ratings', [
+        load_tsv_to_db_in_chunks('/files/title.ratings.tsv', 'title_ratings', [
+            'tconst', 'averagerating', 'numvotes'], conn)
+        
+    except Exception as e:
+        print(f"Error durante la carga de datos: {e}")
+    finally:
+        # Reactivar restricciones
+        print("Reactivar restricciones de claves.")
+        set_constraints(conn, enable=True)
+        conn.close()
+    
+
+    # Cerrar la conexión
+    conn.close()
+    print("Proceso de carga de información completa.")
+
+if __name__ == "__main__":
+    main()

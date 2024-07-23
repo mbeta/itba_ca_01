@@ -1,48 +1,57 @@
-
--- Tabla critic_reviews
-CREATE TABLE critic_reviews (
-    reviewId BIGINT PRIMARY KEY,
-    creationDate DATE,
-    criticName VARCHAR(255),
-    criticPageUrl VARCHAR(255),
-    reviewState VARCHAR(50),
-    isFresh BOOLEAN,
-    isRotten BOOLEAN,
-    isRtUrl BOOLEAN,
-    isTopCritic BOOLEAN,
-    publicationUrl VARCHAR(255),
-    publicationName VARCHAR(255),
-    reviewUrl TEXT,
-    quote TEXT,
-    scoreSentiment VARCHAR(50),
-    originalScore VARCHAR(50),
-    movieId UUID
+-- Crear la tabla para los títulos básicos
+CREATE TABLE title_basics (
+    tconst VARCHAR(255) PRIMARY KEY,
+    titleType VARCHAR(50),
+    primaryTitle TEXT,
+    originalTitle TEXT,
+    isAdult BOOLEAN,
+    startYear INT,
+    endYear INT,
+    runtimeMinutes INT,
+    genres TEXT[]
 );
 
--- Tabla movies
-CREATE TABLE movies (
-    movieId UUID PRIMARY KEY,
-    movieTitle TEXT,
-    movieYear INTEGER, 
-    movieURL TEXT,
-    movieRank INTEGER,
-    critic_score VARCHAR(10),
-    audience_score VARCHAR(10)
+-- Crear la tabla para los nombres de personas
+CREATE TABLE name_basics (
+    nconst VARCHAR(255) PRIMARY KEY,
+    primaryName TEXT,
+    birthYear INT,
+    deathYear INT,
+    primaryProfession TEXT[],
+    knownForTitles TEXT[]
 );
 
--- Tabla user_reviews
-CREATE TABLE user_reviews (
-    movieId UUID,
-    rating DECIMAL(2,1),
-    quote TEXT,
-    reviewId VARCHAR(50),
-    isVerified BOOLEAN,
-    isSuperReviewer BOOLEAN,
-    hasSpoilers BOOLEAN,
-    hasProfanity BOOLEAN,
-    score DECIMAL(2,1),
-    creationDate DATE,
-    userDisplayName VARCHAR(255),
-    userRealm VARCHAR(50),
-    userId BIGINT
+-- Crear la tabla para los títulos alternativos
+CREATE TABLE title_akas (
+    titleId VARCHAR(255),
+    ordering INT,
+    title TEXT,
+    region VARCHAR(50),
+    language VARCHAR(50),
+    types TEXT[],
+    attributes TEXT[],
+    isOriginalTitle BOOLEAN,
+    PRIMARY KEY (titleId, ordering),
+    FOREIGN KEY (titleId) REFERENCES title_basics(tconst)
+);
+
+-- Crear la tabla para el elenco y el equipo principal
+CREATE TABLE title_principals (
+    tconst VARCHAR(255),
+    ordering INT,
+    nconst VARCHAR(255),
+    category VARCHAR(50),
+    job TEXT,
+    characters TEXT,
+    PRIMARY KEY (tconst, ordering, nconst),
+    FOREIGN KEY (tconst) REFERENCES title_basics(tconst),
+    FOREIGN KEY (nconst) REFERENCES name_basics(nconst)
+);
+
+-- Crear la tabla para las calificaciones de los títulos
+CREATE TABLE title_ratings (
+    tconst VARCHAR(255) PRIMARY KEY,
+    averageRating FLOAT,
+    numVotes INT,
+    FOREIGN KEY (tconst) REFERENCES title_basics(tconst)
 );
