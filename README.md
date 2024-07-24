@@ -39,5 +39,11 @@ Con este análisis y las respuestas a estas preguntas, se pueden obtener valiosa
 
 
 ---
+## Instrucciones 
+
+1. Descargar archivos .tsv de:  [IMBb Movies Dataset](https://www.kaggle.com/datasets/ashirwadsangwan/imdb-dataset)
+2. Guardarlos dentro la carpeta "files" del directorio raiz.
+3. Ejecutar en cmd: docker-compose up --build
+
 
 
