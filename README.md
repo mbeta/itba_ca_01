@@ -39,12 +39,54 @@ Con este análisis y las respuestas a estas preguntas, se pueden obtener valiosa
 
 
 ---
+## Solución 
+
+### Descripción del Proyecto
+Este proyecto se encarga de procesar y analizar un dataset de películas de IMDb. Incluye la carga de datos en una base de datos PostgreSQL y la ejecución de consultas SQL para obtener información valiosa.
+
+**Dataset:** [IMBb Movies Dataset](https://www.kaggle.com/datasets/ashirwadsangwan/imdb-dataset)
+
+Para resolver el trabajo se diseño un Multi-conteiner que consta de 3 contenedores:
+1. Contenedor postgres_12.7: Contiene la Base de datos PostgresSQL Version 12.7
+    Datos de conexion:
+    - user: user
+    - password: password
+    - base de datos: imdb-movies
+    - puerto: 5432
+2. Contenedor data_loader: Ejecuta un Script de populacion de datos en la base de datos desde archivos.
+3. Contenedor data_report: Ejecuta un Script para realizar consultas.
+
+Estos contenedores se configuran y construyen a partir de docker-compose donde se setea configuracion de volumenes de datos, carpetas compartidas, variables de entorno, acciones de ejecucion de script ademas de condicionales de ejecucion.
+
+En el Contenedor postgres_12.7, corren los servicio de base de datos postgre ademas que al iniciarse, se ejecuta un script de creacion de tablas necesarias (create_tables.sql), el script se encuenta dentro del directorio initdb.
+
+En el Contenedor data_loader, se ejecutará un script de populacion de datos "populate_db.py", que luego de chequear que los archivos para migracion ya se encuentran disponibles (archivos .tsv) se conecta a la base de datos, en caso de no encontrarse aun disponible espera para reintentar. Una vez obtenida la conexion de la DB desactiva la integridad referencial para iniciar la carga de datos, para la cual se toma cada archivo y se divide en bloques y lo procesa (por motivos de performance y necesidades de memoria). Se debe tener en cuenta que los archivos de datos son de gran tamaño por lo que toma un tiempo considerable procesarlos.
+Una vez terminada la carga de datos vuelve a activar la integridad referencial.
+
+El Contenedor data_report ejecuta un script para las consultas SQL que responde las preguntas funcionales, para lo cual era necesario que la carga de informacion, por lo que se agrego un condicionar en el docker-compose que se ejecute cuando data_loader haya terminado. Ejecuta las queries y guarda el resultado de las mismas en un archivo log (/logs/report_queries.log).
+
+Se incorpora un .sh para la ejecucion del docker-compose y posterior vista del reporte de consultas.
+
 ## Instrucciones 
 
-1. Descargar archivos .tsv de:  [IMBb Movies Dataset](https://www.kaggle.com/datasets/ashirwadsangwan/imdb-dataset)
+### Requisitos Previos
+Antes de ejecutar este proyecto, asegúratese debe contar con los siguientes requisitos instalados en el sistema:
+
+1. **Docker**: Docker es una plataforma que permite desarrollar, enviar y ejecutar aplicaciones dentro de contenedores.
+   - [Instalar Docker](https://docs.docker.com/get-docker/)
+
+2. **Docker Compose**: Docker Compose es una herramienta para definir y ejecutar aplicaciones Docker de múltiples contenedores.
+   - [Instalar Docker Compose](https://docs.docker.com/compose/install/)
+
+### Paso a Paso
+
+1. Clonar este repositorio en un directorio a eleccion (Directorio RAIZ de ahora en mas)
+2. Descargar archivos .tsv de:  [IMBb Movies Dataset](https://www.kaggle.com/datasets/ashirwadsangwan/imdb-dataset)
 2. Guardarlos dentro la carpeta "files" del directorio raiz.
-3. Ejecutar en cmd: docker-compose up --build
+3. Ejecuta el script run_end2end.sh
+    En windows puede utilizar Cygwin
+    - Vaya al directorio Raiz
+    - Ejecute: chmod +x run_end2end.sh
+    - Ejecute: ./run_end2end.sh
 
 
-El reporte de consulta se iniciará una vez finalizada la migracion de datos. 
-Reporte de consultas: /logs/report_queries.log
