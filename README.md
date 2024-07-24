@@ -46,4 +46,5 @@ Con este análisis y las respuestas a estas preguntas, se pueden obtener valiosa
 3. Ejecutar en cmd: docker-compose up --build
 
 
-
+El reporte de consulta se iniciará una vez finalizada la migracion de datos. 
+Reporte de consultas: /logs/report_queries.log

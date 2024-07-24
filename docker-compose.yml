@@ -1,6 +1,7 @@
 version: '3.9'
 
 services:
+  # Servicio para Base de Datos Postgres 
   db:
     image: postgres:12.7
     container_name: postgres_12.7
@@ -19,10 +20,11 @@ services:
     #   timeout: 5s
     #   retries: 5
 
+  # Servicio para carga de datos en DB 
   data_loader:
     build:
       context: .
-      dockerfile: Dockerfile
+      dockerfile: data_loader.dockerfile
     container_name: data_loader
     # depends_on:
       # - db
@@ -43,6 +45,25 @@ services:
         limits:
           memory: 4G  
           cpus: '2.0'  
+
+  # Servicio para Reporte de Consultas 
+  data_report:
+    build:
+      context: .
+      dockerfile: queries.dockerfile
+    container_name: data_report
+    depends_on:
+      data_loader:
+        condition: service_completed_successfully
+    volumes:
+      - ./logs:/logs
+    environment:
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: imdb-movies
+      POSTGRES_HOST: db
+    command: ["sh", "-c", "python report_queries.py > /logs/report_queries.log 2>&1"]
+    restart: on-failure
 
 volumes:
   postgres_data:
