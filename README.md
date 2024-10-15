@@ -1,5 +1,5 @@
 # itba_ca_01
-Trabajo Práctico Intermedio Foundations - Betania Martinez
+ETL Foundations - Betania Martinez
 
 # IMDb Movie Dataset
 
