@@ -44,7 +44,6 @@ def set_constraints(conn, enable=True):
     conn.commit()
     cur.close()
 
-
 def transform_array_column(df, column_name):
     df[column_name] = df[column_name].apply(
         lambda x: "{" + ",".join(x.split(',')) + "}" if pd.notna(x) else None
@@ -172,6 +171,7 @@ def main():
         
     except Exception as e:
         print(f"Error durante la carga de datos: {e}")
+    
     finally:
         # Reactivar restricciones
         print("Reactivar restricciones de claves.")
