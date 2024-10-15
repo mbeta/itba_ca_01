@@ -1,0 +1,15 @@
+services:
+  db:
+    image: postgres:12.7
+    container_name: postgres_12.7
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: imdb-movies
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+volumes:
+  postgres_data:
