@@ -1,10 +1,9 @@
-
 -- Crear la tabla para los títulos básicos
 CREATE TABLE title_basics (
     tconst VARCHAR(255) PRIMARY KEY,
     titleType VARCHAR(50),
-    primaryTitle VARCHAR(255),
-    originalTitle VARCHAR(255),
+    primaryTitle TEXT,
+    originalTitle TEXT,
     isAdult BOOLEAN,
     startYear INT,
     endYear INT,
@@ -15,19 +14,18 @@ CREATE TABLE title_basics (
 -- Crear la tabla para los nombres de personas
 CREATE TABLE name_basics (
     nconst VARCHAR(255) PRIMARY KEY,
-    primaryName VARCHAR(255),
+    primaryName TEXT,
     birthYear INT,
     deathYear INT,
     primaryProfession TEXT[],
     knownForTitles TEXT[]
 );
 
-
 -- Crear la tabla para los títulos alternativos
 CREATE TABLE title_akas (
     titleId VARCHAR(255),
     ordering INT,
-    title VARCHAR(255),
+    title TEXT,
     region VARCHAR(50),
     language VARCHAR(50),
     types TEXT[],
@@ -43,7 +41,7 @@ CREATE TABLE title_principals (
     ordering INT,
     nconst VARCHAR(255),
     category VARCHAR(50),
-    job VARCHAR(255),
+    job TEXT,
     characters TEXT,
     PRIMARY KEY (tconst, ordering, nconst),
     FOREIGN KEY (tconst) REFERENCES title_basics(tconst),
@@ -57,5 +55,3 @@ CREATE TABLE title_ratings (
     numVotes INT,
     FOREIGN KEY (tconst) REFERENCES title_basics(tconst)
 );
-
-

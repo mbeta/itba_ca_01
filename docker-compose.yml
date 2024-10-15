@@ -1,3 +1,5 @@
+version: '3.9'
+
 services:
   db:
     image: postgres:12.7
@@ -11,6 +13,36 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
       - ./initdb:/docker-entrypoint-initdb.d
+    # healthcheck:
+    #   test: ["CMD-SHELL", "pg_isready -d imdb-movies -U user -h db"]
+    #   interval: 10s
+    #   timeout: 5s
+    #   retries: 5
+
+  data_loader:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: data_loader
+    # depends_on:
+      # - db
+      # db:
+      #   condition: service_healthy
+    volumes:
+      - ./files:/files
+      - ./logs:/logs
+    environment:
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: imdb-movies
+      POSTGRES_HOST: db  # Nombre del servicio en docker-compose
+    command: ["sh", "-c", "python populate_db.py > /logs/populate_db.log 2>&1"]
+    restart: on-failure
+    deploy:
+      resources:
+        limits:
+          memory: 4G  
+          cpus: '2.0'  
 
 volumes:
   postgres_data:
